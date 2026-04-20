@@ -1,0 +1,11 @@
+[project]
+name = "fast-dllm-mlx"
+version = "0.1.0"
+description = "Fast dLLM on mlx, faster training-free inference for diffusion LLMs"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "mlx-lm>=0.31.2",
+    "pandas>=3.0.2",
+    "transformers>=5.5.4",
+]

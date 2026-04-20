@@ -1,0 +1,3 @@
+Solve this problem carefully and show all reasoning steps: A train leaves City A traveling at 84 km/h. Ninety minutes later, a second train leaves City B toward City A at 96 km/h. The cities are 594 km apart. Determine when and where the trains meet, and verify the result in two different ways.
+Solve in detail and explain each transformation: Find all real solutions to the equation sqrt(x + 15) + sqrt(21 - x) = 9. Check every candidate solution in the original equation and explain why extraneous solutions do or do not appear.
+Provide a full step-by-step solution: Evaluate the definite integral from 0 to 1 of x^2 ln(1 + x) dx. Use integration techniques clearly, simplify the final expression exactly, and then provide a decimal approximation.

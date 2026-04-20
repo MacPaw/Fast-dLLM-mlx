@@ -1,0 +1,3 @@
+Write a complete Python implementation of an LRU cache class from scratch. Include clear method definitions, error handling choices, and a short example that demonstrates insertion, lookup, update, and eviction behavior.
+Write a full Python solution for topological sorting of a directed graph with cycle detection. Explain the algorithm, include type hints, analyze time complexity, and provide a small runnable example with expected output.
+Implement a small but clean HTTP rate limiter in Python using the token bucket algorithm. Show the core class, explain design decisions, include a short demonstration script, and mention how it could be adapted for async applications.

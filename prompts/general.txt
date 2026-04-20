@@ -1,0 +1,3 @@
+Explain in detail how modern passenger aircraft stay safe during severe weather, including pilot procedures, aircraft systems, airport operations, maintenance, and passenger-facing safety decisions. Write a long structured answer with concrete examples.
+Write a long comparative analysis of nuclear energy, solar, wind, and hydroelectric power. Cover reliability, cost, storage, transmission, environmental tradeoffs, and policy implications in a balanced way.
+Give a detailed long-form explanation of how operating systems schedule work across CPU cores, memory, disks, and network devices. Include threads, interrupts, paging, caching, fairness, and real-world tradeoffs.
