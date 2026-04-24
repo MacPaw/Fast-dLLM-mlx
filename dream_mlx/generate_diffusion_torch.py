@@ -1,3 +1,18 @@
+# Copyright 2026 MacPaw Way Ltd.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from __future__ import annotations
 
 import argparse
@@ -7,12 +22,12 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import torch
 import torch.distributions as dists
+import transformers.modeling_rope_utils as rope_utils
+import transformers.utils as transformers_utils
 from torch.nn import functional as F
 from transformers import AutoModel, AutoTokenizer
-import transformers.modeling_rope_utils as rope_utils
 from transformers.generation.configuration_utils import GenerationConfig
 from transformers.utils import ModelOutput
-import transformers.utils as transformers_utils
 
 
 def top_p_logits(logits, top_p=None):
@@ -188,7 +203,10 @@ class DreamGenerationMixin:
 
             if alg == "origin":
                 p_transfer = 1 - s / t if i < steps - 1 else 1
-                x0 = torch.zeros_like(x[mask_index], device=device, dtype=torch.long) + mask_token_id
+                x0 = (
+                    torch.zeros_like(x[mask_index], device=device, dtype=torch.long)
+                    + mask_token_id
+                )
                 transfer_index_t_s = torch.rand(*x0.shape, device=device) < p_transfer
                 _, x0[transfer_index_t_s] = sample_tokens(
                     mask_logits[transfer_index_t_s],
@@ -233,13 +251,18 @@ class DreamGenerationMixin:
                 full_confidence[mask_index] = confidence
                 if number_transfer_tokens > 0:
                     if alg_temp is None or alg_temp == 0:
-                        _, transfer_index = torch.topk(full_confidence, number_transfer_tokens)
+                        _, transfer_index = torch.topk(
+                            full_confidence, number_transfer_tokens
+                        )
                     else:
                         full_confidence = F.softmax(full_confidence / alg_temp, dim=-1)
                         transfer_index = torch.multinomial(
                             full_confidence, num_samples=number_transfer_tokens
                         )
-                    x_ = torch.zeros_like(x, device=device, dtype=torch.long) + mask_token_id
+                    x_ = (
+                        torch.zeros_like(x, device=device, dtype=torch.long)
+                        + mask_token_id
+                    )
                     x_[mask_index] = x0.clone()
                     row_indices = (
                         torch.arange(x.size(0), device=device)
@@ -278,6 +301,7 @@ def load_model_and_tokenizer(
     trust_remote_code: bool,
 ):
     if not hasattr(transformers_utils, "is_flash_attn_greater_or_equal_2_10"):
+
         def is_flash_attn_greater_or_equal_2_10() -> bool:
             return False
 
@@ -286,6 +310,7 @@ def load_model_and_tokenizer(
         )
 
     if "default" not in rope_utils.ROPE_INIT_FUNCTIONS:
+
         def compute_default_rope_parameters(
             config=None,
             device=None,
@@ -305,8 +330,9 @@ def load_model_and_tokenizer(
             inv_freq = 1.0 / (
                 base
                 ** (
-                    torch.arange(0, dim, 2, dtype=torch.int64)
-                    .to(device=device, dtype=torch.float)
+                    torch.arange(0, dim, 2, dtype=torch.int64).to(
+                        device=device, dtype=torch.float
+                    )
                     / dim
                 )
             )
@@ -314,38 +340,58 @@ def load_model_and_tokenizer(
 
         rope_utils.ROPE_INIT_FUNCTIONS["default"] = compute_default_rope_parameters
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=trust_remote_code)
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_id, trust_remote_code=trust_remote_code
+    )
     if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModel.from_pretrained(
-        model_id,
-        trust_remote_code=trust_remote_code,
-        dtype=dtype,
-    ).to(device).eval()
-    model.diffusion_generate = types.MethodType(DreamGenerationMixin.diffusion_generate, model)
+    model = (
+        AutoModel.from_pretrained(
+            model_id,
+            trust_remote_code=trust_remote_code,
+            dtype=dtype,
+        )
+        .to(device)
+        .eval()
+    )
+    model.diffusion_generate = types.MethodType(
+        DreamGenerationMixin.diffusion_generate, model
+    )
     model._sample = types.MethodType(DreamGenerationMixin._sample, model)
     return model, tokenizer
 
 
-def decode_generation(tokenizer, input_ids: torch.Tensor, sequences: torch.Tensor) -> str:
+def decode_generation(
+    tokenizer, input_ids: torch.Tensor, sequences: torch.Tensor
+) -> str:
     generated_ids = sequences[0][len(input_ids[0]) :].tolist()
     text = tokenizer.decode(generated_ids, skip_special_tokens=True)
     return text.strip()
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run Dream diffusion generation in Torch.")
+    parser = argparse.ArgumentParser(
+        description="Run Dream diffusion generation in Torch."
+    )
     parser.add_argument("--model", default="Dream-org/Dream-v0-Instruct-7B")
-    parser.add_argument("--device", choices=["auto", "cuda", "mps", "cpu"], default="auto")
-    parser.add_argument("--dtype", choices=["auto", "float16", "bfloat16", "float32"], default="auto")
+    parser.add_argument(
+        "--device", choices=["auto", "cuda", "mps", "cpu"], default="auto"
+    )
+    parser.add_argument(
+        "--dtype", choices=["auto", "float16", "bfloat16", "float32"], default="auto"
+    )
     parser.add_argument("--prompt", default="hello")
     parser.add_argument("--max-new-tokens", type=int, default=128)
     parser.add_argument("--steps", type=int, default=128)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top-p", type=float, default=None)
     parser.add_argument("--top-k", type=int, default=None)
-    parser.add_argument("--alg", choices=["origin", "maskgit_plus", "topk_margin", "entropy"], default="entropy")
+    parser.add_argument(
+        "--alg",
+        choices=["origin", "maskgit_plus", "topk_margin", "entropy"],
+        default="entropy",
+    )
     parser.add_argument("--alg-temp", type=float, default=0.0)
     parser.add_argument("--trust-remote-code", action="store_true")
     parser.add_argument("--disable-chat-template", action="store_true")
@@ -385,7 +431,9 @@ def main() -> None:
         dtype=dtype,
         trust_remote_code=args.trust_remote_code,
     )
-    inputs = maybe_apply_chat_template(tokenizer, args.prompt, args.disable_chat_template)
+    inputs = maybe_apply_chat_template(
+        tokenizer, args.prompt, args.disable_chat_template
+    )
     inputs = {name: tensor.to(device) for name, tensor in inputs.items()}
     generation_config = DreamGenerationConfig(
         max_new_tokens=args.max_new_tokens,

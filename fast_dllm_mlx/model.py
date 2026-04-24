@@ -1,10 +1,28 @@
+# Copyright 2026 MacPaw Way Ltd.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Union
 
 import mlx.core as mx
 import mlx.nn as nn
-
-from mlx_lm.models.base import BaseModelArgs, create_attention_mask, scaled_dot_product_attention
+from mlx_lm.models.base import (
+    BaseModelArgs,
+    create_attention_mask,
+    scaled_dot_product_attention,
+)
 from mlx_lm.models.rope_utils import initialize_rope
 
 
@@ -45,10 +63,18 @@ class DreamAttention(nn.Module):
         self.head_dim = args.head_dim or args.hidden_size // self.n_heads
         self.scale = self.head_dim**-0.5
 
-        self.q_proj = nn.Linear(args.hidden_size, self.n_heads * self.head_dim, bias=True)
-        self.k_proj = nn.Linear(args.hidden_size, self.n_kv_heads * self.head_dim, bias=True)
-        self.v_proj = nn.Linear(args.hidden_size, self.n_kv_heads * self.head_dim, bias=True)
-        self.o_proj = nn.Linear(self.n_heads * self.head_dim, args.hidden_size, bias=False)
+        self.q_proj = nn.Linear(
+            args.hidden_size, self.n_heads * self.head_dim, bias=True
+        )
+        self.k_proj = nn.Linear(
+            args.hidden_size, self.n_kv_heads * self.head_dim, bias=True
+        )
+        self.v_proj = nn.Linear(
+            args.hidden_size, self.n_kv_heads * self.head_dim, bias=True
+        )
+        self.o_proj = nn.Linear(
+            self.n_heads * self.head_dim, args.hidden_size, bias=False
+        )
 
         self.rope = initialize_rope(
             self.head_dim,
@@ -113,7 +139,9 @@ class DreamDecoderLayer(nn.Module):
         self.self_attn = DreamAttention(args)
         self.mlp = DreamMLP(args)
         self.input_layernorm = nn.RMSNorm(args.hidden_size, eps=args.rms_norm_eps)
-        self.post_attention_layernorm = nn.RMSNorm(args.hidden_size, eps=args.rms_norm_eps)
+        self.post_attention_layernorm = nn.RMSNorm(
+            args.hidden_size, eps=args.rms_norm_eps
+        )
 
     def __call__(
         self,
@@ -139,7 +167,9 @@ class DreamModel(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
         self.embed_tokens = nn.Embedding(args.vocab_size, args.hidden_size)
-        self.layers = [DreamDecoderLayer(args=args) for _ in range(args.num_hidden_layers)]
+        self.layers = [
+            DreamDecoderLayer(args=args) for _ in range(args.num_hidden_layers)
+        ]
         self.norm = nn.RMSNorm(args.hidden_size, eps=args.rms_norm_eps)
 
     def __call__(
@@ -151,7 +181,11 @@ class DreamModel(nn.Module):
         cache_position: Optional[int] = None,
         replace_cache: bool = False,
     ):
-        h = input_embeddings if input_embeddings is not None else self.embed_tokens(inputs)
+        h = (
+            input_embeddings
+            if input_embeddings is not None
+            else self.embed_tokens(inputs)
+        )
 
         if mask is None:
             mask = create_attention_mask(h, cache)

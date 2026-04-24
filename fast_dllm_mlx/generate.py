@@ -1,3 +1,18 @@
+# Copyright 2026 MacPaw Way Ltd.
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 import argparse
 import time
 from dataclasses import dataclass
@@ -252,7 +267,9 @@ def _select_confident_updates(
     transfer_index = mask_index & (confidence >= threshold)
     max_conf_idx = mx.argmax(confidence, axis=-1, keepdims=True)
     force_mask = _scatter_true(max_conf_idx, x_block.shape[1])
-    has_mask = mx.broadcast_to(mx.any(mask_index, axis=-1, keepdims=True), transfer_index.shape)
+    has_mask = mx.broadcast_to(
+        mx.any(mask_index, axis=-1, keepdims=True), transfer_index.shape
+    )
     transfer_index = transfer_index | (force_mask & has_mask)
     return mx.where(transfer_index, x0, x_block)
 
@@ -279,7 +296,9 @@ def _compiled_select_confident_updates_greedy(
         mx.ones(max_conf_idx.shape, dtype=mx.bool_),
         axis=-1,
     )
-    has_mask = mx.broadcast_to(mx.any(mask_index, axis=-1, keepdims=True), transfer_index.shape)
+    has_mask = mx.broadcast_to(
+        mx.any(mask_index, axis=-1, keepdims=True), transfer_index.shape
+    )
     transfer_index = transfer_index | (force_mask & has_mask)
     return mx.where(transfer_index, x0, x_block)
 
