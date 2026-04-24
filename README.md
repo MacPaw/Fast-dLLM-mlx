@@ -9,6 +9,8 @@ This repository is an MLX implementation of the first Fast-dLLM ideas from the
 Dream-style diffusion language models. The focus here is training-free
 inference speedups for Dream models running on MLX.
 
+Tech note: https://research.macpaw.com/publications/fast-dllm-mlx.
+
 The current implementation includes:
 
 - Dream architecture inference in MLX
@@ -106,3 +108,14 @@ than the Dream MLX variants. Among the Qwen `mlx_lm` baselines, only the 4-bit
 variant outperforms Dream with Fast-dLLM on MLX. These numbers are useful for a
 quick relative comparison, but they are not a full evaluation across larger
 prompt sets or different generation settings.
+
+
+## To cite 
+
+`@online{yemets-2026-fast-dllm-mlx,
+  author = {Kyrylo Yemets},
+  title = {Fast-dLLM on MLX: Training-Free Acceleration for Diffusion Language Models on Apple Silicon},
+  note = {\emph{Online.} \url{https://research.macpaw.com/publications/fast-dllm-mlx}},
+  month = {Apr},
+  year = {2026},
+}`
