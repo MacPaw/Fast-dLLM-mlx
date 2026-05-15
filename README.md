@@ -1,6 +1,6 @@
-![Fast-dLLM-mlx header](header.png)
-
 # Fast-dLLM-mlx
+
+<img width="2000" height="800" alt="Cover Fast-dLLM→ mlx - white@2x" src="https://github.com/user-attachments/assets/f26f49ac-403d-46dc-8eec-95c6c6f8d984" />
 
 `Fast-dLLM-mlx` implements Dream architecture inference in MLX for Apple Silicon.
 
