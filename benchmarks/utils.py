@@ -39,12 +39,29 @@ class BenchmarkResult:
     generation_tokens_per_s: float | None
     overall_tokens_per_s: float | None
     total_time_s: float
+    diffusion_canvas_tokens: int | None = None
+    diffusion_denoising_steps: int | None = None
+    diffusion_work_tokens: int | None = None
 
 
 @dataclass
 class PromptSpec:
     prompt_type: str
     text: str
+
+
+def encode_token_count(tokenizer, text: str, *, add_special_tokens: bool = False) -> int:
+    return len(tokenizer.encode(text, add_special_tokens=add_special_tokens))
+
+
+def generated_text_token_count(tokenizer, text: str) -> int:
+    if not text:
+        return 0
+    return encode_token_count(tokenizer, text, add_special_tokens=False)
+
+
+def get_tokenizer(processor_or_tokenizer):
+    return getattr(processor_or_tokenizer, "tokenizer", processor_or_tokenizer)
 
 
 def load_prompts(prompt_file: Path | None) -> list[PromptSpec]:
@@ -168,3 +185,46 @@ def print_summary(results: list[BenchmarkResult]) -> None:
             f"{model_label:20} {device:6} {'overall':8} "
             f"{sum(values) / len(values):10.2f}"
         )
+
+    diffusion_results = [
+        result for result in results if result.diffusion_work_tokens is not None
+    ]
+    if not diffusion_results:
+        return
+
+    print()
+    print("Diffusion work totals")
+    print("-" * 100)
+    for result in diffusion_results:
+        work_tps = (
+            result.diffusion_work_tokens / result.total_time_s
+            if result.diffusion_work_tokens is not None and result.total_time_s > 0
+            else None
+        )
+        work_tps_text = f"{work_tps:10.2f}" if work_tps is not None else "       n/a"
+        print(
+            f"{result.model_label:20} {result.device:6} {result.prompt_type:8} "
+            f"{result.prompt_index:6d} "
+            f"canvas={result.diffusion_canvas_tokens:6d} "
+            f"steps={result.diffusion_denoising_steps:4d} "
+            f"work={result.diffusion_work_tokens:8d} "
+            f"work/s={work_tps_text}"
+        )
+
+    diffusion_work_aggregates: dict[tuple[str, str], list[float]] = {}
+    for result in diffusion_results:
+        if result.diffusion_work_tokens is None or result.total_time_s <= 0:
+            continue
+        diffusion_work_aggregates.setdefault((result.model_label, result.device), []).append(
+            result.diffusion_work_tokens / result.total_time_s
+        )
+
+    if diffusion_work_aggregates:
+        print()
+        print("Average diffusion work/s overall")
+        print("-" * 100)
+        for (model_label, device), values in sorted(diffusion_work_aggregates.items()):
+            print(
+                f"{model_label:20} {device:6} {'overall':8} "
+                f"{sum(values) / len(values):10.2f}"
+            )

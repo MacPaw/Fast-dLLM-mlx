@@ -21,6 +21,48 @@ The current implementation includes:
 The repository also includes small benchmark scripts used to compare MLX
 variants across the prompts in [`prompts/`](/Users/ruiite/projects/Fast-dLLM-mlx/prompts).
 
+## DiffusionGemma Inference
+
+This repository now includes classic DiffusionGemma MLX inference and a
+Fast-dLLM-style DiffusionGemma path for comparing block-diffusion generation on
+Apple Silicon.
+
+Run Fast DiffusionGemma generation:
+
+```bash
+uv run python -m fast_dllm_mlx.diffusion_gemma \
+  --model mlx-community/diffusiongemma-26B-A4B-it-4bit \
+  --prompt "Why is the sky blue? Answer in one sentence." \
+  --max-new-tokens 256 \
+  --steps 16 \
+  --threshold 0.9 \
+  --use-compile \
+  --no-think \
+  --use-self-conditioning \
+  --max-canvas-length 64
+```
+
+Run the Fast DiffusionGemma benchmark with the same generation settings:
+
+```bash
+uv run python -m benchmarks.fast_diffusion_gemma_mlx_benchmark \
+  --model mlx-community/diffusiongemma-26B-A4B-it-4bit \
+  --max-new-tokens 256 \
+  --steps 16 \
+  --threshold 0.9 \
+  --no-think \
+  --use-compile \
+  --warmup \
+  --use-self-conditioning \
+  --max-canvas-length 64
+```
+
+The benchmark below compares `mlx-vlm` DiffusionGemma inference with the
+Fast DiffusionGemma path in this repository on the local prompt set on M4 Pro.
+The `mlx-vlm` comparison uses version `0.6.4`.
+
+![MLX-VLM vs Fast DiffusionGemma by benchmark category](mlx_vlm_vs_fast_diffusion_gemma_category_comparison.png)
+
 ## Install
 
 ```bash
@@ -110,12 +152,17 @@ quick relative comparison, but they are not a full evaluation across larger
 prompt sets or different generation settings.
 
 
-## To cite 
 
-`@online{yemets-2026-fast-dllm-mlx,
+## Citation
+
+If you used this repository or our work, please cite:
+
+```bibtex
+@online{yemets-2026-fast-dllm-mlx,
   author = {Kyrylo Yemets},
   title = {Fast-dLLM on MLX: Training-Free Acceleration for Diffusion Language Models on Apple Silicon},
   note = {\emph{Online.} \url{https://research.macpaw.com/publications/fast-dllm-mlx}},
   month = {Apr},
   year = {2026},
-}`
+}
+```

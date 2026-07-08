@@ -22,3 +22,30 @@ from .generate import (
     load,
     stream_diffusion_generate,
 )
+from .diffusion_gemma import (
+    FastDiffusionGemmaGenerationConfig,
+    FastDiffusionGemmaGenerator,
+    diffusion_generate as diffusion_gemma_generate,
+    diffusion_generate_ids as diffusion_gemma_generate_ids,
+    load as diffusion_gemma_load,
+    stream_diffusion_generate as stream_diffusion_gemma_generate,
+    stream_diffusion_generate_ids as stream_diffusion_gemma_generate_ids,
+)
+
+__all__ = [
+    "DreamGenerationConfig",
+    "DreamGenerationResponse",
+    "DreamGenerator",
+    "DualKVCache",
+    "FastDiffusionGemmaGenerationConfig",
+    "FastDiffusionGemmaGenerator",
+    "diffusion_generate",
+    "diffusion_gemma_generate",
+    "diffusion_gemma_generate_ids",
+    "diffusion_gemma_load",
+    "load",
+    "make_dual_prompt_cache",
+    "stream_diffusion_generate",
+    "stream_diffusion_gemma_generate",
+    "stream_diffusion_gemma_generate_ids",
+]
