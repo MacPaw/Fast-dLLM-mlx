@@ -1,7 +1,17 @@
 # Copyright 2026 MacPaw Way Ltd.
-#
+
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 
 import argparse
 import time
@@ -17,8 +27,8 @@ from diffusion_gemma_mlx.generate import (
     DiffusionGemmaGenerationResponse,
     _canvas_length_for_block,
     _diffusion_generation_runtime,
-    _max_canvas_length_for_generation,
     _make_decoder_logits_functions,
+    _max_canvas_length_for_generation,
     _prepare_prompt,
     _to_numpy,
     _wired_limit_bytes,
@@ -168,7 +178,9 @@ def _select_updates(
             mx.any(unresolved & ~transfer, axis=-1, keepdims=True),
             transfer.shape,
         )
-        next_idx = mx.argmax(mx.where(transfer, neg_inf, confidence), axis=-1, keepdims=True)
+        next_idx = mx.argmax(
+            mx.where(transfer, neg_inf, confidence), axis=-1, keepdims=True
+        )
         force = _scatter_true(next_idx, canvas.shape[1])
         transfer = transfer | (force & has_unresolved)
 
@@ -467,7 +479,9 @@ def stream_diffusion_generate_ids(
             generated_tokens += canvas.shape[1]
 
             mx.clear_cache()
-            if eos_set and any(token in eos_set for row in canvas.tolist() for token in row):
+            if eos_set and any(
+                token in eos_set for row in canvas.tolist() for token in row
+            ):
                 break
             if block_idx != n_blocks - 1:
                 _, cache = model.model.encoder(canvas, cache=cache)
@@ -567,7 +581,10 @@ def stream_diffusion_generate(
             peak_memory=mx.get_peak_memory() / 1e9,
             finish_reason="canvas",
         )
-        if generation_config.max_new_tokens is not None and emitted >= generation_config.max_new_tokens:
+        if (
+            generation_config.max_new_tokens is not None
+            and emitted >= generation_config.max_new_tokens
+        ):
             break
 
 

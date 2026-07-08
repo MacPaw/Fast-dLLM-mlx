@@ -1,7 +1,17 @@
 # Copyright 2026 MacPaw Way Ltd.
-#
+
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 
 import weakref
 from dataclasses import dataclass
@@ -101,9 +111,15 @@ class RMSNormNoScale(nn.Module):
 class MLP(nn.Module):
     def __init__(self, config: ModelArgs):
         super().__init__()
-        self.gate_proj = nn.Linear(config.hidden_size, config.intermediate_size, bias=False)
-        self.up_proj = nn.Linear(config.hidden_size, config.intermediate_size, bias=False)
-        self.down_proj = nn.Linear(config.intermediate_size, config.hidden_size, bias=False)
+        self.gate_proj = nn.Linear(
+            config.hidden_size, config.intermediate_size, bias=False
+        )
+        self.up_proj = nn.Linear(
+            config.hidden_size, config.intermediate_size, bias=False
+        )
+        self.down_proj = nn.Linear(
+            config.intermediate_size, config.hidden_size, bias=False
+        )
 
     def __call__(self, x):
         return self.down_proj(geglu(self.gate_proj(x), self.up_proj(x)))
@@ -206,14 +222,20 @@ class Attention(nn.Module):
             else config.num_key_value_heads
         )
         self.scale = 1.0
-        self.q_proj = nn.Linear(config.hidden_size, self.n_heads * self.head_dim, bias=False)
-        self.k_proj = nn.Linear(config.hidden_size, self.n_kv_heads * self.head_dim, bias=False)
+        self.q_proj = nn.Linear(
+            config.hidden_size, self.n_heads * self.head_dim, bias=False
+        )
+        self.k_proj = nn.Linear(
+            config.hidden_size, self.n_kv_heads * self.head_dim, bias=False
+        )
         self.v_proj = (
             nn.Linear(config.hidden_size, self.n_kv_heads * self.head_dim, bias=False)
             if self.is_sliding
             else None
         )
-        self.o_proj = nn.Linear(self.n_heads * self.head_dim, config.hidden_size, bias=False)
+        self.o_proj = nn.Linear(
+            self.n_heads * self.head_dim, config.hidden_size, bias=False
+        )
         self.q_norm = nn.RMSNorm(self.head_dim, eps=config.rms_norm_eps)
         self.k_norm = nn.RMSNorm(self.head_dim, eps=config.rms_norm_eps)
         self.v_norm = RMSNormNoScale(self.head_dim, eps=config.rms_norm_eps)
@@ -275,9 +297,15 @@ class SelfConditioning(nn.Module):
         super().__init__()
         self.pre_norm = nn.RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_norm = RMSNormNoScale(config.hidden_size, eps=config.rms_norm_eps)
-        self.gate_proj = nn.Linear(config.hidden_size, config.intermediate_size, bias=False)
-        self.up_proj = nn.Linear(config.hidden_size, config.intermediate_size, bias=False)
-        self.down_proj = nn.Linear(config.intermediate_size, config.hidden_size, bias=False)
+        self.gate_proj = nn.Linear(
+            config.hidden_size, config.intermediate_size, bias=False
+        )
+        self.up_proj = nn.Linear(
+            config.hidden_size, config.intermediate_size, bias=False
+        )
+        self.down_proj = nn.Linear(
+            config.intermediate_size, config.hidden_size, bias=False
+        )
 
     def __call__(self, inputs_embeds, self_conditioning_signal):
         normed = self.pre_norm(self_conditioning_signal)
@@ -391,7 +419,9 @@ class DecoderModel(nn.Module):
                 )
             else:
                 soft_embeddings = probs @ self.embed_tokens.weight
-            soft_embeddings = soft_embeddings.astype(inputs_embeds.dtype) * self.embed_scale
+            soft_embeddings = (
+                soft_embeddings.astype(inputs_embeds.dtype) * self.embed_scale
+            )
         return self.self_conditioning(inputs_embeds, soft_embeddings)
 
     def _make_decoder_masks(self, h, caches, decoder_attention_mask=None):
@@ -588,7 +618,9 @@ class DiffusionGemma4Backbone(nn.Module):
         decoder_attention_mask=None,
     ):
         if input_ids is not None:
-            _, cache = self.encoder(input_ids, attention_mask=attention_mask, cache=cache)
+            _, cache = self.encoder(
+                input_ids, attention_mask=attention_mask, cache=cache
+            )
         elif cache is None:
             raise ValueError("Either input_ids or cache must be provided.")
         if canvas_ids is None:
