@@ -20,7 +20,6 @@ from typing import Any, Generator, List, Optional, Tuple, Union
 
 import mlx.core as mx
 import mlx.nn as nn
-import numpy as np
 from mlx_lm.tokenizer_utils import TokenizerWrapper
 
 from diffusion_gemma_mlx.generate import (
