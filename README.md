@@ -110,12 +110,17 @@ quick relative comparison, but they are not a full evaluation across larger
 prompt sets or different generation settings.
 
 
-## To cite 
 
-`@online{yemets-2026-fast-dllm-mlx,
+## Citation
+
+If you used this repository or our work, please cite:
+
+```bibtex
+@online{yemets-2026-fast-dllm-mlx,
   author = {Kyrylo Yemets},
   title = {Fast-dLLM on MLX: Training-Free Acceleration for Diffusion Language Models on Apple Silicon},
   note = {\emph{Online.} \url{https://research.macpaw.com/publications/fast-dllm-mlx}},
   month = {Apr},
   year = {2026},
-}`
+}
+```
