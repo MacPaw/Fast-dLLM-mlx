@@ -456,6 +456,7 @@ def stream_diffusion_generate_ids(
         cache = model.make_cache()
         _, cache = model.model.encoder(prompt_ids, cache=cache)
         eos_set = set(generation_config.eos_token_ids or [])
+        eos_ids = mx.array(list(eos_set), dtype=prompt_ids.dtype) if eos_set else None
         generated_tokens = 0
 
         for block_idx in range(n_blocks):
@@ -478,9 +479,7 @@ def stream_diffusion_generate_ids(
             generated_tokens += canvas.shape[1]
 
             mx.clear_cache()
-            if eos_set and any(
-                token in eos_set for row in canvas.tolist() for token in row
-            ):
+            if eos_ids is not None and bool(mx.any(canvas[..., None] == eos_ids).item()):
                 break
             if block_idx != n_blocks - 1:
                 _, cache = model.model.encoder(canvas, cache=cache)
