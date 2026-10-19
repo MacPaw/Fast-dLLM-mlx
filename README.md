@@ -77,6 +77,55 @@ pip install -e .
 
 ## Basic Usage
 
+### Template Infilling for Dream models
+
+Fix structural anchors throughout the response while the remaining tokens are
+denoised. Anchor offsets are **token positions relative to the generated
+response**, after the user prompt and any chat template. Anchors are tokenized
+without added special tokens and remain visible during every denoising step,
+including when they fall in later blocks.
+
+```python
+from fast_dllm_mlx import DreamGenerationConfig, diffusion_generate, load
+
+model, tokenizer = load("mlx-community/DiffuCoder-7B-cpGRPO-8bit")
+config = DreamGenerationConfig(
+    max_new_tokens=128,
+    steps=128,
+    block_length=32,
+    temperature=0,
+    template_anchors={
+        0: "Problem Analysis:\n",
+        64: "\nStep-by-Step Derivation:\n",
+        112: "\nFinal Answer: ",
+    },
+)
+print(diffusion_generate(model, tokenizer, "What is 17 * 23?", config))
+```
+
+The same `template_anchors` option works with `stream_diffusion_generate`.
+From the command line, pass a JSON file whose keys are the token offsets:
+
+```bash
+uv run python -m fast_dllm_mlx.generate \
+  --model mlx-community/DiffuCoder-7B-cpGRPO-8bit \
+  --prompt "What is 17 * 23?" \
+  --max-new-tokens 128 --steps 128 --block-length 32 --temperature 0 \
+  --template-anchors examples/template_anchors.json
+```
+
+Anchor tokens count toward `max_new_tokens`. Anchors that overlap after
+tokenization, extend beyond the response budget, or contain the mask token are
+rejected. Choose spacing for the selected model's tokenizer. No anchors are
+inserted unless `template_anchors` is supplied.
+
+This implements the fixed-anchor conditioning in
+[Template Infilling](https://aclanthology.org/2026.acl-long.284/); Dynamic Segment
+Allocation is not included. Structural anchors do not guarantee correct answers
+or safety, and no quality or speed improvement is claimed for this integration.
+
+### Benchmark generation
+
 Run the Fast-dLLM MLX benchmark:
 
 ```bash

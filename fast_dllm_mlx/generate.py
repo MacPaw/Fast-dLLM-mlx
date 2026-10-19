@@ -14,11 +14,11 @@
 
 
 import argparse
+import json
 import time
 from dataclasses import dataclass
-from functools import partial
 from pathlib import Path
-from typing import Any, Generator, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import mlx.core as mx
 import mlx.nn as nn
@@ -102,6 +102,7 @@ class DreamGenerationConfig:
     eos_token_id: Optional[int] = 151643
     num_return_sequences: int = 1
     use_chat_template: bool = True
+    template_anchors: Optional[Dict[int, str]] = None
 
 
 @dataclass
@@ -182,7 +183,7 @@ def sample_tokens(
         if key is None:
             key = mx.random.key(int(time.time()))
         x0 = mx.random.categorical(logits, axis=-1, key=key)
-        confidence = probs[mx.arange(probs.shape[0]), x0]
+        confidence = mx.take_along_axis(probs, x0[..., None], axis=-1).squeeze(-1)
     else:
         confidence = mx.max(probs, axis=-1)
         x0 = mx.argmax(probs, axis=-1)
@@ -230,6 +231,72 @@ def _shift_logits(logits: mx.array) -> mx.array:
     return logits
 
 
+def _encode_template_anchors(tokenizer, anchors):
+    """Encode response-relative text anchors without BOS/EOS insertion."""
+    if anchors is None:
+        return {}
+    if not isinstance(anchors, dict):
+        raise ValueError("template_anchors must map integer token offsets to text.")
+    encoded = {}
+    for offset, text in anchors.items():
+        if type(offset) is not int or offset < 0:
+            raise ValueError("Template anchor offsets must be non-negative integers.")
+        if not isinstance(text, str) or not text:
+            raise ValueError("Template anchor text must be a non-empty string.")
+        encoded[offset] = tokenizer.encode(text, add_special_tokens=False)
+    return encoded
+
+
+def _apply_template_anchors(x, prompt_length, anchors, mask_token_id):
+    """Seed persistent anchors; ordinary mask-only updates keep them fixed."""
+    if not anchors:
+        return x
+    generation_length = x.shape[1] - prompt_length
+    previous_end = 0
+    for offset in anchors:
+        if type(offset) is not int or offset < 0:
+            raise ValueError("Template anchor offsets must be non-negative integers.")
+    for offset, tokens in sorted(anchors.items()):
+        if not tokens or any(type(token) is not int or token < 0 for token in tokens):
+            raise ValueError(
+                "Template anchors must encode to non-empty token ID lists."
+            )
+        end = offset + len(tokens)
+        if end > generation_length:
+            raise ValueError(
+                f"Template anchor [{offset}, {end}) exceeds generation length "
+                f"{generation_length}; increase max_new_tokens or move the anchor."
+            )
+        if offset < previous_end:
+            raise ValueError("Template anchors must not overlap after tokenization.")
+        if mask_token_id in tokens:
+            raise ValueError("Template anchors must not contain the mask token.")
+        anchor = mx.broadcast_to(
+            mx.array(tokens, dtype=x.dtype)[None, :], (x.shape[0], len(tokens))
+        )
+        start = prompt_length + offset
+        x = mx.concatenate([x[:, :start], anchor, x[:, start + len(tokens) :]], axis=1)
+        previous_end = end
+    return x
+
+
+def _load_template_anchors(path):
+    """Read CLI JSON offsets, preserving the API's integer-key contract."""
+    anchors = json.loads(Path(path).read_text())
+    if not isinstance(anchors, dict):
+        raise ValueError(
+            "Template JSON must be an object mapping token offsets to text."
+        )
+    if any(not key.isascii() or not key.isdecimal() for key in anchors):
+        raise ValueError(
+            "Template JSON keys must be non-negative integer token offsets."
+        )
+    offsets = {int(key): text for key, text in anchors.items()}
+    if len(offsets) != len(anchors):
+        raise ValueError("Template JSON contains duplicate integer offsets.")
+    return offsets
+
+
 def _to_numpy(arr: mx.array) -> np.ndarray:
     return np.asarray(arr.tolist())
 
@@ -274,7 +341,8 @@ def _select_confident_updates(
     return mx.where(transfer_index, x0, x_block)
 
 
-@partial(mx.compile, shapeless=True)
+# Scatter constants depend on batch/sequence shape, so traces must be shape-specific.
+@mx.compile
 def _compiled_select_confident_updates_greedy(
     x_block: mx.array,
     logits: mx.array,
@@ -307,6 +375,7 @@ def diffusion_generate_step(
     prompt: mx.array,
     model: nn.Module,
     generation_config: DreamGenerationConfig,
+    anchor_token_ids: Optional[Dict[int, List[int]]] = None,
 ) -> mx.array:
     max_length = generation_config.max_length
     mask_token_id = generation_config.mask_token_id
@@ -327,6 +396,8 @@ def diffusion_generate_step(
         x = mx.concatenate([prompt, mask_tokens], axis=1)
     else:
         x = prompt[:, :max_length]
+
+    x = _apply_template_anchors(x, prompt.shape[1], anchor_token_ids, mask_token_id)
 
     gen_length = max_length - prompt.shape[1]
     if gen_length <= 0:
@@ -453,7 +524,12 @@ def diffusion_generate(
     if generation_config.max_new_tokens is not None:
         generation_config.max_length = input_length + generation_config.max_new_tokens
 
-    sequence = diffusion_generate_step(prompt_array, model, generation_config)
+    anchor_token_ids = _encode_template_anchors(
+        tokenizer, generation_config.template_anchors
+    )
+    sequence = diffusion_generate_step(
+        prompt_array, model, generation_config, anchor_token_ids=anchor_token_ids
+    )
     generated = _to_numpy(sequence[0, input_length:])
     return tokenizer.decode(generated.tolist(), skip_special_tokens=True)
 
@@ -484,7 +560,12 @@ def stream_diffusion_generate(
         )
 
     start_time = time.perf_counter()
-    sequence = diffusion_generate_step(prompt_array, model, generation_config)
+    anchor_token_ids = _encode_template_anchors(
+        tokenizer, generation_config.template_anchors
+    )
+    sequence = diffusion_generate_step(
+        prompt_array, model, generation_config, anchor_token_ids=anchor_token_ids
+    )
     current_time = time.perf_counter()
     generated_tokens = sequence[0, prompt_array.shape[1] :]
     generated_text = tokenizer.decode(
@@ -511,7 +592,17 @@ def main():
     parser.add_argument("--steps", type=int, default=256)
     parser.add_argument("--block-length", type=int, default=32)
     parser.add_argument("--threshold", type=float, default=0.9)
+    parser.add_argument("--temperature", type=float, default=0.4)
+    parser.add_argument(
+        "--template-anchors",
+        type=Path,
+        help="JSON file mapping response-relative token offsets to fixed anchor text.",
+    )
     args = parser.parse_args()
+
+    anchors = (
+        _load_template_anchors(args.template_anchors) if args.template_anchors else None
+    )
 
     model, tokenizer = load(args.model)
     config = DreamGenerationConfig(
@@ -519,6 +610,8 @@ def main():
         steps=args.steps,
         block_length=args.block_length,
         threshold=args.threshold,
+        temperature=args.temperature,
+        template_anchors=anchors,
     )
     print(diffusion_generate(model, tokenizer, args.prompt, generation_config=config))
 
