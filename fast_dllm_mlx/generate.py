@@ -394,12 +394,16 @@ def diffusion_generate_step(
             (batch_size, pad_length), mask_token_id, dtype=prompt.dtype
         )
         x = mx.concatenate([prompt, mask_tokens], axis=1)
+        prompt_length = prompt.shape[1]
     else:
         x = prompt[:, :max_length]
+        # `x` is truncated to `max_length`, so the effective prompt length must
+        # match the truncated sequence to avoid negative generation lengths.
+        prompt_length = x.shape[1]
 
-    x = _apply_template_anchors(x, prompt.shape[1], anchor_token_ids, mask_token_id)
+    x = _apply_template_anchors(x, prompt_length, anchor_token_ids, mask_token_id)
 
-    gen_length = max_length - prompt.shape[1]
+    gen_length = max_length - prompt_length
     if gen_length <= 0:
         return x
 
