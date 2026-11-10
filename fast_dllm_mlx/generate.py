@@ -251,12 +251,13 @@ def _apply_template_anchors(x, prompt_length, anchors, mask_token_id):
     """Seed persistent anchors; ordinary mask-only updates keep them fixed."""
     if not anchors:
         return x
+    if not isinstance(anchors, dict):
+        raise ValueError("template_anchors must map integer token offsets to tokens.")
     generation_length = x.shape[1] - prompt_length
     previous_end = 0
-    for offset in anchors:
+    for offset, tokens in sorted(anchors.items()):
         if type(offset) is not int or offset < 0:
             raise ValueError("Template anchor offsets must be non-negative integers.")
-    for offset, tokens in sorted(anchors.items()):
         if not tokens or any(type(token) is not int or token < 0 for token in tokens):
             raise ValueError(
                 "Template anchors must encode to non-empty token ID lists."
