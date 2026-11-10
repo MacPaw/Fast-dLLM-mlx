@@ -295,7 +295,16 @@ def _load_template_anchors(path):
         raise ValueError(
             "Template JSON keys must be non-negative integer token offsets."
         )
-    offsets = {int(key): text for key, text in anchors.items()}
+
+    # Validate values early to fail fast (before tokenizer/model setup).
+    offsets: Dict[int, str] = {}
+    for key, text in anchors.items():
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError(
+                f"Template JSON value for offset '{key}' must be a non-empty string."
+            )
+        offsets[int(key)] = text
+
     if len(offsets) != len(anchors):
         raise ValueError("Template JSON contains duplicate integer offsets.")
     return offsets
