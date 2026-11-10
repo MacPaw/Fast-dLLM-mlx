@@ -252,7 +252,10 @@ def _apply_template_anchors(x, prompt_length, anchors, mask_token_id):
     if not anchors:
         return x
     if not isinstance(anchors, dict):
-        raise ValueError("template_anchors must map integer token offsets to tokens.")
+        raise ValueError(
+            "anchor_token_ids (encoded template_anchors) must map integer token offsets "
+            "to non-empty token ID lists."
+        )
     generation_length = x.shape[1] - prompt_length
     previous_end = 0
     for offset, tokens in sorted(anchors.items()):
