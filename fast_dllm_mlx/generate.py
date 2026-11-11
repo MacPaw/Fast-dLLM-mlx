@@ -241,9 +241,22 @@ def _encode_template_anchors(tokenizer, anchors):
     for offset, text in anchors.items():
         if type(offset) is not int or offset < 0:
             raise ValueError("Template anchor offsets must be non-negative integers.")
-        if not isinstance(text, str) or not text:
-            raise ValueError("Template anchor text must be a non-empty string.")
-        encoded[offset] = tokenizer.encode(text, add_special_tokens=False)
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError(
+                "Template anchor text must be a non-empty, non-whitespace string."
+            )
+        token_ids = tokenizer.encode(text, add_special_tokens=False)
+        # Some tokenizers may encode whitespace-only (or otherwise invalid) strings
+        # to an empty token list; fail fast with a user-facing error here.
+        if (
+            not token_ids
+            or any(type(token) is not int or token < 0 for token in token_ids)
+        ):
+            raise ValueError(
+                f"Template anchor at offset {offset} must encode to a non-empty list "
+                "of non-negative token IDs; check for whitespace-only or unsupported text."
+            )
+        encoded[offset] = token_ids
     return encoded
 
 
